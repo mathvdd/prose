@@ -79,18 +79,18 @@ class Get(Block):
     def __init__(self, *attributes, name:str="get", arrays:bool=True, **getters):
         """Retrieve and store properties from an :py:class:`~prose.Image`
 
-        If a list of paths is provided to a :py:class:`~prose.Sequence`, each image is 
-        created at the beginning of the sequence, and deleted at the end, so that 
-        computed data stored as :py:class:`prose.Image` properties are deleted at each iteration. 
-        Using the Get blocks provides a way to retain any daa stored in images before 
+        If a list of paths is provided to a :py:class:`~prose.Sequence`, each image is
+        created at the beginning of the sequence, and deleted at the end, so that
+        computed data stored as :py:class:`prose.Image` properties are deleted at each iteration.
+        Using the Get blocks provides a way to retain any daa stored in images before
         they are deleted.
 
         When a sequence is finished, this block has a `values` property, a dictionary
-        where all retained properties are accessible by name, and consist of a list with 
-        a length corresponding to the number of images processed. The parameters of this 
+        where all retained properties are accessible by name, and consist of a list with
+        a length corresponding to the number of images processed. The parameters of this
         dictionary are the args and kwargs provided to the block (see Example).
 
-        If Image is constructed from a FITS image, header values can be retrieved using the 
+        If Image is constructed from a FITS image, header values can be retrieved using the
         syntax "keyword:KEY" (see example todo)
 
         Parameters
@@ -152,6 +152,7 @@ class Calibration(Block):
     def __init__(
         self,
         darks:list=None,
+        darksflats:list=None,
         flats:list=None,
         bias:list=None,
         loader=FITSImage,
@@ -166,6 +167,8 @@ class Calibration(Block):
         ----------
         darks : list, optional
             list of dark files paths, by default None
+        flatsdarks : list, optional
+            list of flats dark files paths, by default None
         flats : list, optional
             list of flat files paths, by default None
         bias : list, optional
@@ -189,6 +192,10 @@ class Calibration(Block):
 
         self.master_bias = self._produce_master(bias, "bias")
         self.master_dark = self._produce_master(darks, "dark")
+        if darksflats != None:
+            self.master_darkflats = self._produce_master(darksflats, "dark")
+        else:
+            self.master_darkflats = self.master_dark
         self.master_flat = self._produce_master(flats, "flat")
 
         if shared:
@@ -238,7 +245,7 @@ class Calibration(Block):
                     _flat = (
                         image.data
                         - self.master_bias
-                        - self.master_dark * image.exposure.value
+                        - self.master_darkflats * image.exposure.value
                     )
                     _flat /= np.mean(_flat)
                     _master.append(_flat)
@@ -431,7 +438,7 @@ class LimitSources(Block):
 
 
 class GetFluxes(Get):
-    
+
     def __init__(self,  *args, time:str='jd', **kwargs):
         """A conveniant class to get fluxes and background from aperture and annulus blocks
 
@@ -451,7 +458,7 @@ class GetFluxes(Get):
                 return im.annulus["median"]
             else:
                 return np.zeros(len(im.sources))
-            
+
         def get_time(im):
             if self._time_key in im.computed.keys():
                 return getattr(im, self._time_key)
@@ -459,7 +466,7 @@ class GetFluxes(Get):
                 return im.jd
             else:
                 return im.i
-            
+
         def get_area(im): return np.pi*(im.aperture['radii']**2)
 
         super().__init__(*args, _time=get_time, _bkg=get_bkg, _fluxes=get_fluxes, _area=get_area, name="fluxes", **kwargs)
@@ -477,7 +484,7 @@ class GetFluxes(Get):
 
 
 class WriteTo(Block):
-    
+
     def __init__(self, destination, label="processed", imtype=True, overwrite=False, name=None):
         """Write image to FITS file
 
@@ -506,18 +513,18 @@ class WriteTo(Block):
         else:
             assert isinstance(imtype, str), "imtype must be a bool or a str"
             self.imtype = imtype
-            
+
         self.files = []
-        
+
     def run(self, image):
         self.destination.mkdir(exist_ok=True, parents=True)
-        
+
         new_hdu = fits.PrimaryHDU(image.data)
         new_hdu.header = image.fits_header
-        
+
         if self.imtype is not None:
             image.fits_header[image.telescope.keyword_image_type] = self.imtype
-        
+
         fits_new_path = self.destination / (Path(image.metadata["path"]).stem + f"_{self.label}.fits")
 
         new_hdu.writeto(fits_new_path, overwrite=self.overwrite)
@@ -525,7 +532,7 @@ class WriteTo(Block):
 
 
 class SelectiveStack(Block):
-    
+
     def __init__(self, n=5,  name=None):
         """Build a median stack image from the `n` best-FWHM images
 
@@ -542,7 +549,7 @@ class SelectiveStack(Block):
         self.n = n
         self._images = []
         self._sigmas = []
-    
+
     def run(self, image: Image):
         sigma = image.fwhm
         if len(self._images) < self.n:
@@ -553,7 +560,6 @@ class SelectiveStack(Block):
             if self._sigmas[i] > sigma:
                 self._sigmas[i] = sigma
                 self._images[i] = image
-    
+
     def terminate(self):
         self.stack = Image(easy_median([im.data for im in self._images]))
-    
