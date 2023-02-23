@@ -249,10 +249,10 @@ class FitsManager:
         darks = self.observations(type="dark", **kwargs)
         flats = self.observations(type="flat", **kwargs)
         bias = self.observations(type="bias", **kwargs)
-        
+
         return pd.concat([darks, flats, bias], axis=0)
-        
-    def files(self, id=None, path=False, exposure=0, tolerance=1000, **kwargs):
+
+    def files(self, id=None, path=False, exposure=0, tolerance=1000, custom=None, **kwargs):
         """Return a pandas DataFrame of files given some metadata constraints in the form of wildcards
 
         Parameters
@@ -267,6 +267,8 @@ class FitsManager:
             tolerance on the exposure constraint, by default 1000. For example: if exposure is set to 10 and tolerance to 2, all
             files with exposure = 10 +- 2 will be retrieved
         """
+        if custom is None:
+            custom = ' '
         columns = {c[1]: "%" for c in self.con.execute("PRAGMA table_info(files)").fetchall()}
         if not path:
             del columns["path"]
@@ -280,11 +282,12 @@ class FitsManager:
 
         where = " AND ".join([f"{key} LIKE {in_value(value)}" for key, value in columns.items()])
         where += f" AND {exposure_constraint(exposure, tolerance)}"
+        where += f" {custom}"
 
         del columns["id"]
         df = self.to_pandas(f"select {','.join(columns.keys())} from files where {where} order by jd")
         return df
-    
+
     def paths(self, **kwargs):
         """Get the paths of all files matching the kwargs query (see prose.FitsImage.files)
 
