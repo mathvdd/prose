@@ -344,7 +344,7 @@ class Image:
     def writeto(self, destination):
         """TODO"""
         hdu = fits.PrimaryHDU(
-            data=self.data, header=fits.Header(utils.clean_header(self.header))
+            data=self.data, header=fits.Header(utils.clean_header(self.fits_header))
         )
         hdu.writeto(destination, overwrite=True)
 
