@@ -234,22 +234,25 @@ class Calibration(Block):
             if self.verbose:
                 info(f"Building master {image_type}")
 
-            for image_path in images:
-                image = self.loader(image_path)
-                if image_type == "dark":
-                    _dark = (image.data - self.master_bias) / image.exposure.value
-                    _master.append(_dark)
-                elif image_type == "bias":
-                    _master.append(image.data)
-                elif image_type == "flat":
-                    _flat = (
-                        image.data
-                        - self.master_bias
-                        - self.master_darkflats * image.exposure.value
-                    )
-                    _flat /= np.mean(_flat)
-                    _master.append(_flat)
-                    del image
+            if isinstance(images, np.ndarray):
+                _master.append(images)
+            else:
+                for image_path in images:
+                    image = self.loader(image_path)
+                    if image_type == "dark":
+                        _dark = (image.data - self.master_bias) / image.exposure.value
+                        _master.append(_dark)
+                    elif image_type == "bias":
+                        _master.append(image.data)
+                    elif image_type == "flat":
+                        _flat = (
+                            image.data
+                            - self.master_bias
+                            - self.master_darkflats * image.exposure.value
+                        )
+                        _flat /= np.mean(_flat)
+                        _master.append(_flat)
+                        del image
 
             if len(_master) > 0:
                 master = _median(_master)
