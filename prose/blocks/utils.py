@@ -192,10 +192,10 @@ class Calibration(Block):
 
         self.master_bias = self._produce_master(bias, "bias")
         self.master_dark = self._produce_master(darks, "dark")
-        if darksflats != None:
-            self.master_darkflats = self._produce_master(darksflats, "dark")
-        else:
+        if darksflats is None:
             self.master_darkflats = self.master_dark
+        else:
+            self.master_darkflats = self._produce_master(darksflats, "dark")
         self.master_flat = self._produce_master(flats, "flat")
 
         if shared:
