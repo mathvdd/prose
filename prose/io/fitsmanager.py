@@ -179,7 +179,7 @@ class FitsManager:
 
         # or IGNORE to handle the unique constraint
         self.cur.execute(
-            f"INSERT or IGNORE INTO files VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            f"INSERT or IGNORE INTO files (date,path,telescope,filter,type,target,width,height,jd,id,exposure) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 date,
                 path,
