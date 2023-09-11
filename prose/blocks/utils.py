@@ -162,6 +162,7 @@ class Calibration(Block):
         darks: Union[list, np.ndarray] = None,
         flats: Union[list, np.ndarray] = None,
         bias: Union[list, np.ndarray] = None,
+        darksflat: Union[list, np.ndarray] = None,
         loader=FITSImage,
         easy_ram: bool = True,
         verbose: bool = True,
@@ -190,6 +191,8 @@ class Calibration(Block):
             list of flats, by default None
         bias : list or np.ndarray, optional
             list of bias, by default None
+        darksflat : list or np.ndarray, optional
+            list of darks for flat correction, if None darks will be taken. By default None
         loader : object, optional
             loader used to load str path to :py:class:`~prose.Image`, by default :py:class:`~prose.FITSImage`
         easy_ram : bool, optional
@@ -225,6 +228,10 @@ class Calibration(Block):
 
         self.master_bias = self._produce_master(check_input(bias), "bias")
         self.master_dark = self._produce_master(check_input(darks), "dark")
+        if darksflat is not None:
+            self.master_darkflat = self._produce_master(darksflat, "dark")
+        else:
+            self.master_darkflat = self.master_dark
         self.master_flat = self._produce_master(check_input(flats), "flat")
 
         if shared:
@@ -293,7 +300,7 @@ class Calibration(Block):
                     _flat = (
                         image_data
                         - self.master_bias
-                        - self.master_dark * image_exposure
+                        - self.master_darkflat * image_exposure
                     )
                     _flat /= np.mean(_flat)
                     _master.append(_flat)
