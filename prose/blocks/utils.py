@@ -167,6 +167,7 @@ class Calibration(Block):
         easy_ram: bool = True,
         verbose: bool = True,
         shared: bool = False,
+        load_mcalib: bool = False,
         **kwargs,
     ):
         """Flat, Bias and Dark calibration.
@@ -201,6 +202,8 @@ class Calibration(Block):
             whether to log information about master calibration images building, by default True
         shared : bool, optional
             whether to allow the master calibration images to be shared, useful for multi-processing, by default False
+        load_mcalib : bool, optional
+            if True and only one calibration image is given for a given image type, will consider it a master already corrected for bias and dark
         """
 
         super().__init__(**kwargs)
@@ -226,13 +229,13 @@ class Calibration(Block):
 
             return value
 
-        self.master_bias = self._produce_master(check_input(bias), "bias")
-        self.master_dark = self._produce_master(check_input(darks), "dark")
+        self.master_bias = self._produce_master(check_input(bias), "bias",load_mcalib=load_mcalib)
+        self.master_dark = self._produce_master(check_input(darks), "dark",load_mcalib=load_mcalib)
         if darksflat is not None:
-            self.master_darkflat = self._produce_master(darksflat, "dark")
+            self.master_darkflat = self._produce_master(darksflat, "dark",load_mcalib=load_mcalib)
         else:
             self.master_darkflat = self.master_dark
-        self.master_flat = self._produce_master(check_input(flats), "flat")
+        self.master_flat = self._produce_master(check_input(flats), "flat",load_mcalib=load_mcalib)
 
         if shared:
             self._share()
@@ -241,7 +244,7 @@ class Calibration(Block):
         self.calibration = self._calibration_shared if shared else self._calibration
         self._parallel_friendly = shared
 
-    def _produce_master(self, images, image_type):
+    def _produce_master(self, images, image_type, load_mcalib=False):
         if images is not None:
             if not isinstance(images, list):
                 images = [images]
@@ -273,6 +276,11 @@ class Calibration(Block):
                 )
 
             return image_data, image_exposure
+
+        if (len(images) == 1) and (load_mcalib == True):
+            master, image_exposure = _get_data_exposure(images[0])
+            self.shapes[image_type] = master.shape
+            return master
 
         _master = []
 
