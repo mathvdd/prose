@@ -58,7 +58,7 @@ class Trim(Block):
             skip_wcs = not image.plate_solved
         else:
             skip_wcs = self.skip_wcs
-        cutout = image.cutout(center, shape, wcs=skip_wcs)
+        cutout = image.cutout(center, shape, wcs=not skip_wcs)
         image.data = cutout.data
         image.sources = cutout.sources
         image.wcs = cutout.wcs
