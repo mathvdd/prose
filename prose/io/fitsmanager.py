@@ -143,19 +143,20 @@ class FitsManager:
         _,
         jd,
         exposure,
-        id=None,
-        update_obs=True,
+        readoutm,
+        update_obs=False,
     ):
         """Insert FITS data to object database"""
         if isinstance(filter, float):
             filter = ""
         else:
             filter = filter or ""
-        telescope = telescope or ""
-        target = target or ""
-        id = id or "NULL"
+        telescope = telescope or None
+        target = target or None
+        # id = id or "NULL"
         width, height = dimensions
         filter = filter.replace("'", "p")
+        if filter == "":filter = None
 
         # update observation
         if update_obs:
@@ -179,7 +180,7 @@ class FitsManager:
 
         # or IGNORE to handle the unique constraint
         self.cur.execute(
-            f"INSERT or IGNORE INTO files (date,path,telescope,filter,type,target,width,height,jd,id,exposure) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            f"INSERT or IGNORE INTO files VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)",
             (
                 date,
                 path,
@@ -190,8 +191,9 @@ class FitsManager:
                 width,
                 height,
                 jd,
-                id,
+                readoutm,
                 exposure,
+                None,
             ),
         )
 

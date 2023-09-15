@@ -136,12 +136,13 @@ def fits_to_df(
                 date=_telescope.date(header),
                 telescope=_telescope.name,
                 type=_telescope.image_type(header),
-                target=header.get(_telescope.keyword_object, ""),
-                filter=header.get(_telescope.keyword_filter, ""),
+                target=header.get(_telescope.keyword_object, None),
+                filter=header.get(_telescope.keyword_filter, None),
                 dimensions=(header.get("NAXIS1", 1), header.get("NAXIS2", 1)),
                 flip=header.get(_telescope.keyword_flip, ""),
-                jd=header.get(_telescope.keyword_jd, ""),
+                jd=header.get(_telescope.keyword_jd, None),
                 exposure=float(header.get(_telescope.keyword_exposure_time, -1)),
+                readoutm = header.get("READOUTM", None),
             )
         )
 
@@ -158,6 +159,7 @@ def fits_to_df(
             "flip",
             "jd",
             "exposure",
+            "readoutm",
         ),
     )
 
