@@ -277,7 +277,7 @@ class Calibration(Block):
 
             return image_data, image_exposure
 
-        if (len(images) == 1) and (load_mcalib == True):
+        if images is not None and (len(images) == 1) and (load_mcalib == True):
             master, image_exposure = _get_data_exposure(images[0])
             self.shapes[image_type] = master.shape
             return master
