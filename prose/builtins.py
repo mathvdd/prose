@@ -102,7 +102,7 @@ trappist = dict(
 trappistN = dict(
     speculoos_south,
     name="TRAPPIST-North",
-    names=("Trappist-North", "ntm", "ACP->NTM"),
+    names=("Trappist-North", "ntm", "ACP->NTM","ACP->TRAPPIST-North"),
     pixel_scale=0.60,
     diameter=60,
     ra_unit="hourangle",
