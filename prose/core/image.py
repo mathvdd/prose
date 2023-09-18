@@ -424,14 +424,20 @@ class Image:
         """Return whether the image is plate solved."""
         return self.wcs.has_celestial
 
-    def writeto(self, destination: Union[str, Path]):
+    def writeto(self, destination: Union[str, Path], update_wcs=False):
         """Write image to FITS file
 
         Parameters
         ----------
         destination : Union[str, Path]
             destination path
+        save_wcs : bool, optional
+            Whether to save changes to the wcs in the new fits header. Default is False
         """
+        if update_wcs and self.plate_solved:
+            self.header['CRPIX1'] = self.wcs.wcs.crpix[0]
+            self.header['CRPIX2'] = self.wcs.wcs.crpix[1]
+
         hdu = fits.PrimaryHDU(
             data=self.data, header=fits.Header(utils.clean_header(self.header))
         )
