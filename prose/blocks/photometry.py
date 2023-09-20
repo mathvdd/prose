@@ -4,7 +4,7 @@ from photutils.aperture import aperture_photometry
 
 from prose import Block, Image
 
-__all__ = ["AperturePhotometry", "AnnulusBackground"]
+__all__ = ["AperturePhotometry", "AnnulusBackground", "SkyBackground"]
 
 
 class AperturePhotometry(Block):
@@ -124,5 +124,59 @@ class AnnulusBackground(_AnnulusPhotometry):
             "rin": rin,
             "rout": rin,
             "median": np.array(bkg_median),
+            "sigma": self.sigma,
+        }
+
+
+class SkyBackground(Block):
+    def __init__(
+        self,
+        rim: int = 100,
+        sigma: float = 3,
+        image_subtract: bool = False,
+        name=None,
+    ):
+        """Estimate the sky background and sigma from the edges of the image.
+
+        |read| :code:`Image.data`
+
+        |write| :code:`Image.sky_background`, :code:`Image.data`
+
+        Parameters
+        ----------
+        rim : int, optional
+            size of the rim from which to extract the background value, by default 100
+        sigma : float, optional
+            sigma clipping applied to pixel the rim before taking the median value, by default 3.
+        image_subtract : bool, optional
+            whether to subtract the computed sky background from the image, by default False
+        name : str, optional
+            name of the block, by default None
+        """
+
+        super().__init__(name=name)
+        self.rim = rim
+        self.image_subtract = image_subtract
+        self.sigma = sigma
+
+    def run(self, image: Image):
+
+        imshape = image.data.shape
+        image_subtract = self.image_subtract
+
+        mask = np.zeros(imshape, dtype = 'bool')
+        mask[self.rim:imshape[0]-self.rim,self.rim:imshape[1]-self.rim] = 1
+
+        masked_data = np.ma.masked_array(image.data, mask)
+
+        _, median, std = sigma_clipped_stats(masked_data, sigma=self.sigma)
+
+        if self.image_subtract:
+            image.data -= median
+
+        image.computed["sky_background"] = {
+            "rim": self.rim,
+            "median": median,
+            "std": std,
             "sigma": self.sigma,
         }
