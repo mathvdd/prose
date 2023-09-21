@@ -17,6 +17,7 @@ __all__ = [
     "Get",
     "Calibration",
     "CleanBadPixels",
+    "CleanBadPixels2",
     "Del",
     "GetFluxes",
     "WriteTo",
@@ -457,6 +458,85 @@ class CleanBadPixels(Block):
     def run(self, image):
         image.data = self.clean(image.data.copy())
 
+class CleanBadPixels2(Block):
+    def __init__(
+        self,
+        bad_pixels_map=None,
+        darks=None,
+        flats=None,
+        min_flat=0.6,
+        loader=Image,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+
+        self.loader = loader
+
+        assert (
+            darks is not None or bad_pixels_map is not None
+        ), "bad_pixels_map or darks must be specified"
+        if darks is not None:
+            self.master_dark = Calibration(darks=darks).master_dark
+            info("buidling bad pixels map")
+            if darks is not None:
+
+                theshold = 3 * np.std(self.master_dark)
+                median = np.median(self.master_dark)
+                hots = np.abs(self.master_dark) - median > theshold
+                deads = self.master_dark < median / 2
+
+                self.bad_pixels = np.where(hots | deads)
+                self.bad_pixels_map = np.zeros_like(self.master_dark)
+
+            if flats is not None:
+                _flats = []
+                for flat in flats:
+                    data = self.loader(flat).data
+                    _flats.append(data / np.mean(data))
+                master_flat = easy_median(_flats)
+                master_flat = self.clean(master_flat)
+                bad_flats = np.where(master_flat < min_flat)
+                if len(bad_flats) == 2:
+                    self.bad_pixels = (
+                        np.hstack([self.bad_pixels[0], bad_flats[0]]),
+                        np.hstack([self.bad_pixels[1], bad_flats[1]]),
+                    )
+
+            self.bad_pixels_map[self.bad_pixels] = 1
+
+        elif bad_pixels_map is not None:
+            if isinstance(bad_pixels_map, (str, Path)):
+                bad_pixels_map = Image(bad_pixels_map).data
+            elif isinstance(bad_pixels_map, Image):
+                bad_pixels_map = bad_pixels_map.data
+            else:
+                bad_pixels_map = bad_pixels_map
+
+            self.bad_pixels_map = bad_pixels_map
+            self.bad_pixels = np.where(bad_pixels_map == 1)
+
+    def clean(self, data):
+        data[self.bad_pixels] = np.nan
+        data[data < 0] = np.nan
+        nans = np.array(np.where(np.isnan(data))).T
+        padded_data = np.pad(data.copy(), (1, 1), constant_values=np.nan)
+
+        for i, j in nans + 1:
+            mean = np.nanmean(
+                [
+                    padded_data[i, j - 1],
+                    padded_data[i, j + 1],
+                    padded_data[i - 1, j],
+                    padded_data[i + 1, j],
+                ]
+            )
+            padded_data[i, j] = mean
+            data[i - 1, j - 1] = mean
+
+        return data
+
+    def run(self, image):
+        image.data = self.clean(image.data.copy())
 
 class Del(Block):
     def __init__(self, *names, name="del"):
