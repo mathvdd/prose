@@ -128,6 +128,7 @@ class AutoSourceDetection(_SourceDetection):
     def __init__(
         self,
         threshold=4,
+        thresh_inc=0,
         n=None,
         sort=True,
         min_separation=None,
@@ -145,6 +146,9 @@ class AutoSourceDetection(_SourceDetection):
         ----------
         threshold : float, optional
             detection threshold for sources, by default 4
+        thresh_inc: float, Optional
+            Values by which to reduced the threshold if no sources are found.
+            If 0, will return even if no sources detected. By default, 0
         n : int, optional
             number of sources to detect, by default None
         sort : bool, optional
@@ -167,11 +171,18 @@ class AutoSourceDetection(_SourceDetection):
             min_area=min_area,
             minor_length=minor_length,
         )
+        self.thresh_inc = abs(thresh_inc)
 
     def run(self, image):
-        regions = self.regions(image)
-        sources = np.array([auto_source(region) for region in regions])
-        image.sources = Sources(self.clean(sources))
+        nosources = True
+        while nosources:
+            regions = self.regions(image, threshold=self.threshold)
+            sources = np.array([auto_source(region) for region in regions])
+            image.sources = Sources(self.clean(sources))
+            if (self.thresh_inc == 0) or (len(image.sources) > 0):
+                nosources = False
+            else:
+                self.threshold -= self.thresh_inc
 
 
 class PointSourceDetection(_SourceDetection):
