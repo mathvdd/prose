@@ -566,14 +566,21 @@ class Image:
 
         return cls(**pickle.load(open(filepath, "rb")))
 
-    def _symetric_profile(self, source, binn=1.0):
+    def _symetric_profile(self, source, binn=1.0,method='mean'):
         x, y = source.coords
         Y, X = np.indices(self.shape)
+        #to get the profile starting at 0
+        #Y = Y + y %1
+        #X = X + x%1
         radii = (np.sqrt((X - x) ** 2 + (Y - y) ** 2)).flatten()
         d, values = self._profile(radii)
         idxs = utils.index_binning(d, binn)
         mean = lambda x: np.array([np.mean(x[i]) for i in idxs])
-        return mean(d), mean(values)
+        median = lambda x: np.array([np.median(x[i]) for i in idxs])
+        if method =='mean':
+            return mean(d), mean(values)
+        elif method == 'median':
+            return mean(d), median(values)
 
     def _profile(self, d):
         idxs = np.argsort(d)
