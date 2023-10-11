@@ -582,6 +582,54 @@ class Image:
         elif method == 'median':
             return mean(d), median(values)
 
+    def stat_maps(self,pixbin=(20,20),sigma_clip=3):
+        from astropy.stats import sigma_clipped_stats
+        if isinstance(pixbin, int):
+            pixbin = (pixbin, pixbin)
+        nrow = int(self.shape[0]/pixbin[0]) + (self.shape[0]%pixbin[0]>0)
+        ncol = int(self.shape[1]/pixbin[1]) + (self.shape[1]%pixbin[1]>0)
+        row=0
+        mean_map = np.full((ncol,nrow),np.nan)
+        median_map = np.full((ncol,nrow),np.nan)
+        stddev_map = np.full((ncol,nrow),np.nan)
+
+        while row < (nrow):
+            col=0
+            while col < (ncol):
+                subarray = self.data[row*pixbin[0]:(row+1)*pixbin[0],col*pixbin[1]:(col+1)*pixbin[1]]
+                mean, median, std = sigma_clipped_stats(subarray,sigma=sigma_clip)
+                mean_map[col,row],median_map[col,row],stddev_map[col,row] = mean, median, std
+                col+=1
+            row+=1
+        return mean_map.T,median_map.T,stddev_map.T
+
+    def stat_maps_plot(self,pixbin=(20,20),sigma_clip=3,save_path=None,scale_labels=True):
+        mean_map,median_map,stddev_map=self.stat_maps(pixbin=pixbin,sigma_clip=sigma_clip)
+        fig = plt.figure(figsize=(10,3))
+        ax = plt.subplot(131, title="mean")
+        mm = ax.imshow(mean_map, origin='lower')
+        fig.colorbar(mm,ax=ax)
+        ax2 = plt.subplot(132, title="median")
+        mdm = ax2.imshow(median_map, origin='lower')
+        fig.colorbar(mdm,ax=ax2)
+        ax3 = plt.subplot(133, title="stddev")
+        sm = ax3.imshow(stddev_map, origin='lower')
+        fig.colorbar(sm,ax=ax3)
+        if scale_labels:
+            ax.set_xticks(ticks=ax.get_xticks()[1:-1], labels=np.array(pixbin[0] * ax.get_xticks(),dtype=int)[1:-1])
+            ax.set_yticks(ticks=ax.get_yticks()[1:-1], labels=np.array(pixbin[1] * ax.get_yticks(),dtype=int)[1:-1])
+            ax2.set_xticks(ticks=ax2.get_xticks()[1:-1], labels=np.array(pixbin[0] * ax2.get_xticks(),dtype=int)[1:-1])
+            ax2.set_yticks(ticks=ax2.get_yticks()[1:-1], labels=np.array(pixbin[1] * ax2.get_yticks(),dtype=int)[1:-1])
+            ax3.set_xticks(ticks=ax3.get_xticks()[1:-1], labels=np.array(pixbin[0] * ax3.get_xticks(),dtype=int)[1:-1])
+            ax3.set_yticks(ticks=ax3.get_yticks()[1:-1], labels=np.array(pixbin[1] * ax3.get_yticks(),dtype=int)[1:-1])
+
+        if save_path is None:
+            return fig
+        else:
+            plt.tight_layout()
+            plt.savefig(save_path)
+            plt.close()
+
     def _profile(self, d):
         idxs = np.argsort(d)
         _d = d[idxs]
