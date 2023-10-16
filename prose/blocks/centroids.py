@@ -48,7 +48,7 @@ class _PhotutilsCentroid(Block):
         # *%+#@ photutils check (see photutils.centroids.core code...)
         in_image = np.all(image.sources.coords < image.shape[::-1] - (1, 1), axis=1)
         in_image = np.logical_and(
-            in_image, np.all(image.sources.coords > (0, 0), axis=1)
+            in_image, np.all(image.sources.coords >= (0, 0), axis=1)
         )
         x, y = image.sources.coords[in_image].T.copy()
 
